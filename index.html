@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CronSpeak — Natural Language to Cron Expression</title>
+  <meta name="description" content="Convert plain English schedule descriptions to production-ready cron expressions for Linux, GitHub Actions, AWS EventBridge, Kubernetes, and Vercel.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f5f0e8;
+      color: #1a1a1a;
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ── Header ──────────────────────────────────────── */
+    header {
+      background: #f5f0e8;
+      border-bottom: 1px solid #e5e0d8;
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 58px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      font-family: 'Instrument Serif', serif;
+      font-style: italic;
+      font-size: 22px;
+      color: #f97316;
+      text-decoration: none;
+      letter-spacing: -0.01em;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+    }
+
+    nav a {
+      color: #555;
+      text-decoration: none;
+      font-size: 13.5px;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+
+    nav a:hover { color: #1a1a1a; }
+
+    .btn-primary {
+      background: #f97316;
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      font-family: 'Inter', sans-serif;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn-primary:hover { background: #ea6c0a; }
+
+    /* ── Hero ────────────────────────────────────────── */
+    .hero {
+      text-align: center;
+      padding: 64px 24px 48px;
+    }
+
+    .hero h1 {
+      font-family: 'Instrument Serif', serif;
+      font-style: italic;
+      font-size: 54px;
+      color: #1a1a1a;
+      line-height: 1.08;
+      margin-bottom: 16px;
+      letter-spacing: -0.02em;
+    }
+
+    .hero p {
+      font-size: 17px;
+      color: #666;
+      max-width: 500px;
+      margin: 0 auto;
+      line-height: 1.65;
+    }
+
+    /* ── Main Layout ─────────────────────────────────── */
+    .main-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 32px 100px;
+      display: grid;
+      grid-template-columns: 230px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────── */
+    .sidebar {
+      position: sticky;
+      top: 74px;
+    }
+
+    .sidebar-section {
+      background: #fff;
+      border: 1px solid #e5e0d8;
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 14px;
+    }
+
+    .sidebar-title {
+      font-size: 10.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: #999;
+      margin-bottom: 14px;
+    }
+
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 5px 0;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .checkbox-item input[type="checkbox"] {
+      accent-color: #f97316;
+      width: 15px;
+      height: 15px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .checkbox-label {
+      font-size: 13px;
+      color: #333;
+      font-weight: 500;
+    }
+
+    .preset-item {
+      display: block;
+      width: 100%;
+      padding: 7px 10px;
+      border-radius: 7px;
+      border: none;
+      background: none;
+      font-size: 13px;
+      color: #444;
+      text-align: left;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      transition: background 0.1s, color 0.1s;
+    }
+
+    .preset-item:hover {
+      background: #f5f0e8;
+      color: #f97316;
+    }
+
+    /* ── Main Panel ──────────────────────────────────── */
+    .main-content { min-width: 0; }
+
+    /* API Key Bar */
+    .api-key-bar {
+      background: #fff;
+      border: 1px solid #e5e0d8;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 18px;
+    }
+
+    .api-key-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .input-icon-wrap {
+      position: relative;
+      flex: 1;
+    }
+
+    .input-icon-wrap input {
+      width: 100%;
+      padding: 10px 42px 10px 14px;
+      border: 1px solid #e5e0d8;
+      border-radius: 8px;
+      font-size: 13.5px;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      background: #faf9f7;
+      color: #333;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .input-icon-wrap input:focus {
+      border-color: #f97316;
+      background: #fff;
+    }
+
+    .input-icon-wrap input::placeholder { color: #aaa; }
+
+    .eye-btn {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #999;
+      font-size: 15px;
+      padding: 0;
+      line-height: 1;
+      transition: color 0.15s;
+    }
+
+    .eye-btn:hover { color: #555; }
+
+    .api-key-note {
+      font-size: 11.5px;
+      color: #aaa;
+      margin-top: 9px;
+    }
+
+    .api-key-saved-msg {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13.5px;
+      color: #16a34a;
+      font-weight: 600;
+    }
+
+    .btn-ghost {
+      background: none;
+      border: 1px solid #e5e0d8;
+      color: #666;
+      padding: 6px 14px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      transition: all 0.15s;
+    }
+
+    .btn-ghost:hover { border-color: #f97316; color: #f97316; }
+
+    /* Mode Switcher */
+    .mode-switcher {
+      display: inline-flex;
+      background: #e9e4da;
+      border-radius: 9px;
+      padding: 3px;
+      margin-bottom: 12px;
+    }
+
+    .mode-btn {
+      padding: 7px 20px;
+      border-radius: 7px;
+      border: none;
+      background: none;
+      font-size: 13px;
+      font-weight: 500;
+      color: #777;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      transition: all 0.15s;
+    }
+
+    .mode-btn.active {
+      background: #fff;
+      color: #1a1a1a;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+
+    /* Input Card */
+    .input-card {
+      background: #fff;
+      border: 1px solid #e5e0d8;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 18px;
+    }
+
+    .main-input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1.5px solid #e5e0d8;
+      border-radius: 10px;
+      font-size: 15px;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      color: #1a1a1a;
+      background: #faf9f7;
+      resize: vertical;
+      min-height: 90px;
+      transition: border-color 0.15s, background 0.15s;
+      line-height: 1.55;
+    }
+
+    .main-input:focus {
+      border-color: #f97316;
+      background: #fff;
+    }
+
+    .main-input::placeholder { color: #bbb; }
+
+    /* Chips */
+    .chips-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 14px;
+      min-height: 28px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px 4px 10px;
+      border: 1px solid #d1cdc7;
+      border-radius: 20px;
+      background: #fff;
+      font-size: 12px;
+      font-weight: 500;
+      color: #444;
+    }
+
+    .chip-remove {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #bbb;
+      font-size: 15px;
+      line-height: 1;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      transition: color 0.1s;
+    }
+
+    .chip-remove:hover { color: #f97316; }
+
+    .input-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 14px;
+    }
+
+    .input-hint {
+      font-size: 12px;
+      color: #bbb;
+    }
+
+    .btn-generate {
+      background: #f97316;
+      color: #fff;
+      border: none;
+      padding: 11px 32px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      transition: background 0.15s, opacity 0.15s;
+    }
+
+    .btn-generate:hover { background: #ea6c0a; }
+    .btn-generate:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    /* Error Banner */
+    .error-banner {
+      display: none;
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      border-radius: 9px;
+      padding: 12px 16px;
+      color: #dc2626;
+      font-size: 13.5px;
+      margin-bottom: 16px;
+    }
+
+    .error-banner.show { display: block; }
+
+    /* Results */
+    .results-header {
+      display: none;
+      font-size: 13px;
+      color: #999;
+      margin-bottom: 14px;
+      font-weight: 500;
+    }
+
+    /* Result Card */
+    .result-card {
+      background: #fff;
+      border: 1px solid #e5e0d8;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 14px;
+      transition: box-shadow 0.15s;
+    }
+
+    .result-card:hover {
+      box-shadow: 0 3px 14px rgba(0,0,0,0.06);
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .card-platform-name {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-weight: 600;
+      font-size: 15px;
+      color: #1a1a1a;
+    }
+
+    .platform-icon { font-size: 18px; line-height: 1; }
+
+    .platform-badge {
+      font-size: 9.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      padding: 3px 9px;
+      border-radius: 20px;
+      border: 1px solid;
+    }
+
+    .badge-linux   { color: #854d0e; background: #fef9c3; border-color: #fde68a; }
+    .badge-github  { color: #1e3a5f; background: #dbeafe; border-color: #bfdbfe; }
+    .badge-aws     { color: #713f12; background: #fef3c7; border-color: #fde68a; }
+    .badge-k8s     { color: #3730a3; background: #e0e7ff; border-color: #c7d2fe; }
+    .badge-vercel  { color: #1f2937; background: #f3f4f6; border-color: #e5e7eb; }
+
+    .expr-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      background: #faf9f7;
+      border: 1px solid #e5e0d8;
+      border-radius: 9px;
+      padding: 12px 16px;
+      margin-bottom: 13px;
+    }
+
+    .expr-text {
+      font-family: 'Courier New', 'Courier', monospace;
+      font-size: 19px;
+      font-weight: 700;
+      color: #f97316;
+      letter-spacing: 0.06em;
+      word-break: break-all;
+    }
+
+    .btn-copy {
+      flex-shrink: 0;
+      background: #fff;
+      border: 1px solid #e5e0d8;
+      color: #555;
+      padding: 7px 16px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn-copy:hover { border-color: #f97316; color: #f97316; }
+    .btn-copy.copied { border-color: #16a34a; color: #16a34a; background: #f0fdf4; }
+
+    .card-desc {
+      font-size: 14px;
+      color: #555;
+      margin-bottom: 12px;
+      line-height: 1.55;
+    }
+
+    .next-runs-label {
+      font-size: 10.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #bbb;
+      margin-bottom: 7px;
+    }
+
+    .next-runs-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .run-chip {
+      font-size: 11.5px;
+      color: #777;
+      background: #f5f0e8;
+      padding: 3px 9px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+    }
+
+    .warning-box {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 7px;
+      padding: 9px 13px;
+      font-size: 12.5px;
+      color: #92400e;
+      margin-top: 11px;
+      line-height: 1.5;
+    }
+
+    /* Skeleton */
+    @keyframes shimmer {
+      0%   { background-position: -200% 0; }
+      100% { background-position:  200% 0; }
+    }
+
+    .sk {
+      background: linear-gradient(90deg, #ede9e0 25%, #e0dbd3 50%, #ede9e0 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 6px;
+    }
+
+    .sk-card {
+      background: #fff;
+      border: 1px solid #e5e0d8;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 14px;
+    }
+
+    .sk-h { height: 16px; margin-bottom: 10px; }
+    .sk-title { width: 38%; height: 18px; }
+    .sk-expr-box {
+      background: #faf9f7;
+      border: 1px solid #e5e0d8;
+      border-radius: 9px;
+      padding: 12px 16px;
+      margin-bottom: 13px;
+      display: flex;
+      align-items: center;
+    }
+    .sk-expr { width: 50%; height: 20px; }
+    .sk-d1 { width: 85%; }
+    .sk-d2 { width: 62%; }
+
+    /* ── Examples Section ────────────────────────────── */
+    .section-divider {
+      border: none;
+      border-top: 1px solid #e5e0d8;
+      margin: 60px 0 52px;
+    }
+
+    .examples-section {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 32px 80px;
+    }
+
+    .section-heading {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    .section-heading h2 {
+      font-family: 'Instrument Serif', serif;
+      font-style: italic;
+      font-size: 36px;
+      color: #1a1a1a;
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+
+    .section-heading p {
+      font-size: 15px;
+      color: #777;
+    }
+
+    .examples-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .ex-card {
+      background: #fff;
+      border: 1px solid #e5e0d8;
+      border-radius: 12px;
+      padding: 22px 24px;
+    }
+
+    .ex-tag {
+      font-size: 10.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #bbb;
+      margin-bottom: 8px;
+    }
+
+    .ex-query {
+      font-size: 15px;
+      font-weight: 500;
+      color: #1a1a1a;
+      margin-bottom: 13px;
+    }
+
+    .ex-expr {
+      font-family: 'Courier New', monospace;
+      font-size: 21px;
+      font-weight: 700;
+      color: #f97316;
+      letter-spacing: 0.05em;
+      margin-bottom: 10px;
+    }
+
+    .ex-note {
+      font-size: 13px;
+      color: #777;
+      line-height: 1.55;
+    }
+
+    .ex-note code {
+      font-size: 12px;
+      background: #f5f0e8;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+
+    /* ── How it Works ────────────────────────────────── */
+    .how-section {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 32px 80px;
+    }
+
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .step-card {
+      background: #fff;
+      border: 1px solid #e5e0d8;
+      border-radius: 12px;
+      padding: 24px;
+    }
+
+    .step-num {
+      width: 32px;
+      height: 32px;
+      background: #f97316;
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 14px;
+    }
+
+    .step-title {
+      font-weight: 600;
+      font-size: 15px;
+      color: #1a1a1a;
+      margin-bottom: 8px;
+    }
+
+    .step-desc {
+      font-size: 13.5px;
+      color: #666;
+      line-height: 1.55;
+    }
+
+    .step-desc a { color: #f97316; text-decoration: none; }
+    .step-desc a:hover { text-decoration: underline; }
+
+    /* ── Footer ──────────────────────────────────────── */
+    footer {
+      border-top: 1px solid #e5e0d8;
+      padding: 28px 32px;
+      text-align: center;
+      font-size: 13px;
+      color: #aaa;
+    }
+
+    footer a { color: #f97316; text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ── Responsive ──────────────────────────────────── */
+    @media (max-width: 860px) {
+      .main-container { grid-template-columns: 1fr; }
+      .sidebar { position: static; }
+      .hero h1 { font-size: 38px; }
+    }
+
+    @media (max-width: 640px) {
+      header { padding: 0 16px; }
+      nav a:not(.btn-primary) { display: none; }
+      .hero { padding: 40px 16px 32px; }
+      .hero h1 { font-size: 32px; }
+      .main-container, .examples-section, .how-section { padding-left: 16px; padding-right: 16px; }
+      .examples-grid, .steps-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<header>
+  <a href="#" class="logo">CronSpeak</a>
+  <nav>
+    <a href="#how-it-works">How it Works</a>
+    <a href="#examples">Examples</a>
+    <a href="#about">About</a>
+    <a href="https://console.groq.com" target="_blank" rel="noopener" class="btn-primary">Get Groq API Key</a>
+  </nav>
+</header>
+
+<!-- ═══════════════════ HERO ═════════════════════ -->
+<div class="hero">
+  <h1>Cron Expression Generator</h1>
+  <p>Describe your schedule in plain English. Get a production-ready cron expression instantly.</p>
+</div>
+
+<!-- ═══════════════════ MAIN ═════════════════════ -->
+<div class="main-container">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-title">Platforms</div>
+      <label class="checkbox-item">
+        <input type="checkbox" id="chk-linux" checked onchange="syncChips()">
+        <span class="checkbox-label">🐧 Linux / Crontab</span>
+      </label>
+      <label class="checkbox-item">
+        <input type="checkbox" id="chk-github" checked onchange="syncChips()">
+        <span class="checkbox-label">⚙️ GitHub Actions</span>
+      </label>
+      <label class="checkbox-item">
+        <input type="checkbox" id="chk-aws" checked onchange="syncChips()">
+        <span class="checkbox-label">☁️ AWS EventBridge</span>
+      </label>
+      <label class="checkbox-item">
+        <input type="checkbox" id="chk-k8s" checked onchange="syncChips()">
+        <span class="checkbox-label">🎯 Kubernetes CronJob</span>
+      </label>
+      <label class="checkbox-item">
+        <input type="checkbox" id="chk-vercel" checked onchange="syncChips()">
+        <span class="checkbox-label">▲ Vercel Cron</span>
+      </label>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-title">Quick Presets</div>
+      <button class="preset-item" onclick="fillPreset('Every hour')">Every hour</button>
+      <button class="preset-item" onclick="fillPreset('Daily at midnight')">Daily at midnight</button>
+      <button class="preset-item" onclick="fillPreset('Every weekday at 9am')">Every weekday at 9am</button>
+      <button class="preset-item" onclick="fillPreset('Every Sunday at noon')">Every Sunday at noon</button>
+      <button class="preset-item" onclick="fillPreset('First of every month at midnight')">First of every month</button>
+      <button class="preset-item" onclick="fillPreset('Every 15 minutes')">Every 15 minutes</button>
+      <button class="preset-item" onclick="fillPreset('Every night at 2am')">Every night at 2am</button>
+    </div>
+  </aside>
+
+  <!-- MAIN PANEL -->
+  <main class="main-content">
+
+    <!-- API Key Bar -->
+    <div class="api-key-bar">
+      <div id="key-entry-state">
+        <div class="api-key-row">
+          <div class="input-icon-wrap">
+            <input type="password" id="api-key-input"
+              placeholder="Enter your Groq API key to get started..."
+              autocomplete="off" onkeydown="if(event.key==='Enter') saveKey()">
+            <button class="eye-btn" onclick="toggleEye()" title="Show / hide key">👁</button>
+          </div>
+          <button class="btn-primary" onclick="saveKey()">Save</button>
+        </div>
+        <div class="api-key-note">Your key is stored locally in your browser only. Never sent anywhere except Groq.</div>
+      </div>
+      <div id="key-saved-state" style="display:none;">
+        <div class="api-key-saved-msg">
+          ✓ API Key saved
+          <button class="btn-ghost" onclick="editKey()">Edit</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mode Switcher -->
+    <div class="mode-switcher">
+      <button class="mode-btn active" id="btn-en-cron" onclick="setMode('en-cron')">English → Cron</button>
+      <button class="mode-btn" id="btn-cron-en" onclick="setMode('cron-en')">Cron → English</button>
+    </div>
+
+    <!-- Input Card -->
+    <div class="input-card">
+      <textarea class="main-input" id="main-input"
+        placeholder="Describe your cron schedule… e.g. 'every weekday at 9am' or 'first Monday of each month'"
+        rows="3"></textarea>
+
+      <!-- Platform chips -->
+      <div class="chips-row" id="chips-row"></div>
+
+      <div class="input-footer">
+        <span class="input-hint" id="input-hint">Ctrl + Enter to generate</span>
+        <button class="btn-generate" id="gen-btn" onclick="runGenerate()">Generate</button>
+      </div>
+    </div>
+
+    <!-- Error Banner -->
+    <div class="error-banner" id="error-banner"></div>
+
+    <!-- Results Header -->
+    <div class="results-header" id="results-header"></div>
+
+    <!-- Results -->
+    <div id="results-area"></div>
+
+  </main>
+</div>
+
+<!-- ═══════════════════ HOW IT WORKS ══════════════════ -->
+<hr class="section-divider" id="how-it-works">
+<div class="how-section">
+  <div class="section-heading">
+    <h2>How it Works</h2>
+    <p>Three steps from English to production-ready cron.</p>
+  </div>
+  <div class="steps-grid">
+    <div class="step-card">
+      <div class="step-num">1</div>
+      <div class="step-title">Get a free Groq API key</div>
+      <div class="step-desc">Sign up at <a href="https://console.groq.com" target="_blank" rel="noopener">console.groq.com</a> — it's free. Paste it into the key field above and click Save. It stays in your browser, never leaves your device.</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">2</div>
+      <div class="step-title">Describe your schedule</div>
+      <div class="step-desc">Type anything in plain English — "every weekday at 9am", "first Monday of each month at 8pm", or paste an existing cron expression to decode it.</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">3</div>
+      <div class="step-title">Copy your expression</div>
+      <div class="step-desc">CronSpeak generates platform-specific expressions for Linux, GitHub Actions, AWS EventBridge, Kubernetes, and Vercel — with next-run previews and gotcha warnings.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ EXAMPLES ══════════════════════ -->
+<hr class="section-divider" id="examples">
+<div class="examples-section">
+  <div class="section-heading">
+    <h2>Example Expressions</h2>
+    <p>Common schedules and their cron expressions across platforms.</p>
+  </div>
+  <div class="examples-grid">
+    <div class="ex-card">
+      <div class="ex-tag">Natural Language</div>
+      <div class="ex-query">"Every weekday at 9am"</div>
+      <div class="ex-expr">0 9 * * 1-5</div>
+      <div class="ex-note">Runs Monday–Friday at 09:00. Safe for Linux crontab and GitHub Actions. GitHub Actions runs in UTC.</div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-tag">Natural Language</div>
+      <div class="ex-query">"First day of every month at midnight"</div>
+      <div class="ex-expr">0 0 1 * *</div>
+      <div class="ex-note">Triggers at 00:00 on the 1st of each month. AWS EventBridge requires <code>0 0 1 * ? *</code> with a year field.</div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-tag">Natural Language</div>
+      <div class="ex-query">"Every 15 minutes"</div>
+      <div class="ex-expr">*/15 * * * *</div>
+      <div class="ex-note">Runs at :00, :15, :30, :45 every hour. Widely supported across all platforms. Vercel Free tier minimum is 1 hour.</div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-tag">Natural Language</div>
+      <div class="ex-query">"Every Sunday at noon"</div>
+      <div class="ex-expr">0 12 * * 0</div>
+      <div class="ex-note">Fires at 12:00 PM every Sunday. GitHub Actions schedules may be delayed under heavy load.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ ABOUT ═════════════════════════ -->
+<hr class="section-divider" id="about">
+<div class="how-section" style="padding-bottom:60px;">
+  <div class="section-heading">
+    <h2>About CronSpeak</h2>
+    <p>Open-source, zero-dependency, privacy-first.</p>
+  </div>
+  <div style="max-width:620px;margin:0 auto;text-align:center;font-size:14.5px;color:#666;line-height:1.75;">
+    CronSpeak is a single HTML file — no backend, no tracking, no cookies. Your Groq API key never touches any server other than Groq's own API. The entire app runs in your browser. Powered by <strong>LLaMA 3.3 70B</strong> via <a href="https://groq.com" target="_blank" rel="noopener" style="color:#f97316;text-decoration:none;">Groq</a> for near-instant inference.
+  </div>
+</div>
+
+<!-- ═══════════════════ FOOTER ════════════════════════ -->
+<footer>
+  <p>CronSpeak — Built with Groq AI &middot; <a href="https://console.groq.com" target="_blank" rel="noopener">Get your free API key at console.groq.com</a></p>
+</footer>
+
+<script>
+// ── Platform registry ────────────────────────────────
+const PLATFORMS = [
+  { id:'linux',  key:'linux',           label:'Linux / Crontab',    icon:'🐧', badgeClass:'badge-linux',  badge:'CRONTAB'     },
+  { id:'github', key:'github_actions',  label:'GitHub Actions',     icon:'⚙️', badgeClass:'badge-github', badge:'GITHUB'      },
+  { id:'aws',    key:'aws_eventbridge', label:'AWS EventBridge',    icon:'☁️', badgeClass:'badge-aws',    badge:'EVENTBRIDGE' },
+  { id:'k8s',    key:'kubernetes',      label:'Kubernetes CronJob', icon:'🎯', badgeClass:'badge-k8s',    badge:'KUBERNETES'  },
+  { id:'vercel', key:'vercel',          label:'Vercel Cron',        icon:'▲',  badgeClass:'badge-vercel', badge:'VERCEL'      },
+];
+
+// ── State ─────────────────────────────────────────────
+let mode = 'en-cron';
+let lastResult = null;
+
+// ── Init ──────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  checkStoredKey();
+  syncChips();
+
+  document.getElementById('main-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) runGenerate();
+  });
+});
+
+// ── API Key ───────────────────────────────────────────
+function checkStoredKey() {
+  if (localStorage.getItem('cronspeak_groq_key')) {
+    document.getElementById('key-entry-state').style.display = 'none';
+    document.getElementById('key-saved-state').style.display = 'block';
+  }
+}
+
+function saveKey() {
+  const val = document.getElementById('api-key-input').value.trim();
+  if (!val) return;
+  localStorage.setItem('cronspeak_groq_key', val);
+  document.getElementById('api-key-input').value = '';
+  document.getElementById('key-entry-state').style.display = 'none';
+  document.getElementById('key-saved-state').style.display = 'block';
+}
+
+function editKey() {
+  const stored = localStorage.getItem('cronspeak_groq_key') || '';
+  document.getElementById('api-key-input').value = stored;
+  document.getElementById('key-entry-state').style.display = 'block';
+  document.getElementById('key-saved-state').style.display = 'none';
+  document.getElementById('api-key-input').focus();
+}
+
+function toggleEye() {
+  const inp = document.getElementById('api-key-input');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+// ── Mode ──────────────────────────────────────────────
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-en-cron').classList.toggle('active', m === 'en-cron');
+  document.getElementById('btn-cron-en').classList.toggle('active', m === 'cron-en');
+
+  const inp = document.getElementById('main-input');
+  inp.value = '';
+  clearResults();
+  clearError();
+
+  if (m === 'en-cron') {
+    inp.placeholder = "Describe your cron schedule… e.g. 'every weekday at 9am' or 'first Monday of each month'";
+    document.getElementById('input-hint').textContent = 'Ctrl + Enter to generate';
+  } else {
+    inp.placeholder = "Paste a cron expression… e.g. '0 9 * * 1-5' or '*/15 * * * *'";
+    document.getElementById('input-hint').textContent = 'Ctrl + Enter to decode';
+  }
+}
+
+// ── Platform Chips ────────────────────────────────────
+function getSelected() {
+  return PLATFORMS.filter(p => document.getElementById('chk-' + p.id)?.checked);
+}
+
+function syncChips() {
+  const row = document.getElementById('chips-row');
+  row.innerHTML = '';
+  getSelected().forEach(p => {
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.innerHTML = `${p.icon} ${h(p.label)}<button class="chip-remove" onclick="removeChip('${p.id}')" title="Remove">×</button>`;
+    row.appendChild(chip);
+  });
+  if (lastResult && mode === 'en-cron') renderCards(lastResult);
+}
+
+function removeChip(id) {
+  const chk = document.getElementById('chk-' + id);
+  if (chk) chk.checked = false;
+  syncChips();
+}
+
+// ── Presets ───────────────────────────────────────────
+function fillPreset(text) {
+  if (mode !== 'en-cron') setMode('en-cron');
+  document.getElementById('main-input').value = text;
+  document.getElementById('main-input').focus();
+}
+
+// ── Generate ──────────────────────────────────────────
+async function runGenerate() {
+  const key = localStorage.getItem('cronspeak_groq_key');
+  const input = document.getElementById('main-input').value.trim();
+
+  clearError();
+
+  if (!key) {
+    showError('Please add your Groq API key above to generate expressions.');
+    return;
+  }
+  if (!input) {
+    showError('Please enter a schedule description.');
+    return;
+  }
+
+  setLoading(true);
+  showSkeleton();
+
+  const systemPrompt = mode === 'en-cron'
+    ? `You are a cron expression expert. The user will describe a schedule in plain English. Convert it to cron expressions for multiple platforms.
+
+Respond ONLY with valid JSON in exactly this format:
+{
+  "plain_english": "Runs at 9:00 AM every weekday (Mon-Fri)",
+  "platforms": {
+    "linux": "0 9 * * 1-5",
+    "github_actions": "0 9 * * 1-5",
+    "aws_eventbridge": "0 9 ? * MON-FRI *",
+    "kubernetes": "0 9 * * 1-5",
+    "vercel": "0 9 * * 1-5"
+  },
+  "next_runs": [
+    "Mon Jun 30 2026 09:00",
+    "Tue Jul 1 2026 09:00",
+    "Wed Jul 2 2026 09:00",
+    "Thu Jul 3 2026 09:00",
+    "Fri Jul 4 2026 09:00"
+  ],
+  "warnings": []
+}
+
+For the warnings array, include any platform-specific gotchas like timezone issues, syntax differences, or throttling limits. Keep each warning under 15 words. If no warnings, return empty array.`
+    : `You are a cron expression expert. The user will paste a cron expression. Explain it in plain English. Respond ONLY with valid JSON: { "plain_english": "...full explanation...", "next_runs": ["...5 upcoming dates formatted like 'Mon Jun 30 2026 09:00'..."], "warnings": [] }`;
+
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key}`
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        max_tokens: 600,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: input }
+        ]
+      })
+    });
+
+    if (res.status === 401) {
+      showError('Invalid API key. Get one free at console.groq.com');
+      clearResults();
+      return;
+    }
+
+    if (!res.ok) {
+      showError(`API error (${res.status}). Please try again.`);
+      clearResults();
+      return;
+    }
+
+    const data = await res.json();
+    let result;
+    try {
+      result = JSON.parse(data.choices[0].message.content);
+    } catch {
+      showError("Couldn't understand that schedule. Try rephrasing it.");
+      clearResults();
+      return;
+    }
+
+    lastResult = result;
+    renderCards(result);
+
+  } catch (err) {
+    if (err instanceof TypeError) {
+      showError('Network error. Check your connection.');
+    } else {
+      showError('Something went wrong. Please try again.');
+    }
+    clearResults();
+  } finally {
+    setLoading(false);
+  }
+}
+
+// ── Render ────────────────────────────────────────────
+function renderCards(result) {
+  const area = document.getElementById('results-area');
+  const hdr  = document.getElementById('results-header');
+  area.innerHTML = '';
+
+  if (mode === 'cron-en') {
+    const card = document.createElement('div');
+    card.className = 'result-card';
+    card.innerHTML = `
+      <div class="card-top">
+        <div class="card-platform-name"><span class="platform-icon">🔍</span> Decoded Expression</div>
+        <span class="platform-badge badge-github">CRON → ENGLISH</span>
+      </div>
+      <div class="card-desc" style="font-size:15px;color:#1a1a1a;font-weight:500;line-height:1.6;">${h(result.plain_english)}</div>
+      ${result.next_runs?.length ? nextRunsHtml(result.next_runs) : ''}
+      ${warningsHtml(result.warnings)}`;
+    area.appendChild(card);
+    hdr.textContent = 'Expression decoded';
+    hdr.style.display = 'block';
+    return;
+  }
+
+  const selected = getSelected();
+  const shown = selected.filter(p => result.platforms?.[p.key]);
+
+  shown.forEach(p => {
+    const expr = result.platforms[p.key];
+    const card = document.createElement('div');
+    card.className = 'result-card';
+    card.innerHTML = `
+      <div class="card-top">
+        <div class="card-platform-name"><span class="platform-icon">${p.icon}</span>${h(p.label)}</div>
+        <span class="platform-badge ${p.badgeClass}">${p.badge}</span>
+      </div>
+      <div class="expr-row">
+        <span class="expr-text">${h(expr)}</span>
+        <button class="btn-copy" onclick="copyExpr(this,${JSON.stringify(expr)})">Copy</button>
+      </div>
+      <div class="card-desc">${h(result.plain_english)}</div>
+      ${result.next_runs?.length ? nextRunsHtml(result.next_runs) : ''}
+      ${warningsHtml(result.warnings)}`;
+    area.appendChild(card);
+  });
+
+  hdr.textContent = `Showing ${shown.length} of ${PLATFORMS.length} expressions`;
+  hdr.style.display = 'block';
+}
+
+function nextRunsHtml(runs) {
+  return `<div class="next-runs-label" style="margin-top:12px;">Next runs</div>
+  <div class="next-runs-row">${runs.map(r => `<span class="run-chip">${h(r)}</span>`).join('')}</div>`;
+}
+
+function warningsHtml(warnings) {
+  if (!warnings?.length) return '';
+  return `<div class="warning-box">⚠️ ${warnings.map(w => h(w)).join(' · ')}</div>`;
+}
+
+// ── Skeleton ──────────────────────────────────────────
+function showSkeleton() {
+  const area = document.getElementById('results-area');
+  document.getElementById('results-header').style.display = 'none';
+  const n = mode === 'en-cron' ? getSelected().length || 5 : 1;
+  let html = '';
+  for (let i = 0; i < n; i++) {
+    html += `<div class="sk-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div class="sk sk-h sk-title"></div>
+        <div class="sk" style="width:80px;height:16px;border-radius:20px;"></div>
+      </div>
+      <div class="sk-expr-box"><div class="sk sk-expr"></div></div>
+      <div class="sk sk-h sk-d1"></div>
+      <div class="sk sk-h sk-d2"></div>
+    </div>`;
+  }
+  area.innerHTML = html;
+}
+
+function clearResults() {
+  document.getElementById('results-area').innerHTML = '';
+  document.getElementById('results-header').style.display = 'none';
+  lastResult = null;
+}
+
+// ── Copy ──────────────────────────────────────────────
+function copyExpr(btn, expr) {
+  const done = () => {
+    btn.textContent = 'Copied ✓';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  };
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(expr).then(done).catch(fallback);
+  } else { fallback(); }
+
+  function fallback() {
+    const ta = Object.assign(document.createElement('textarea'), { value: expr });
+    ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch {}
+    document.body.removeChild(ta);
+  }
+}
+
+// ── Error ─────────────────────────────────────────────
+function showError(msg) {
+  const el = document.getElementById('error-banner');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+function clearError() {
+  document.getElementById('error-banner').classList.remove('show');
+}
+
+// ── Loading ───────────────────────────────────────────
+function setLoading(on) {
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = on;
+  btn.textContent = on ? 'Generating…' : 'Generate';
+}
+
+// ── HTML escape ───────────────────────────────────────
+function h(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
