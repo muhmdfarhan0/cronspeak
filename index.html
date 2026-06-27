@@ -1115,30 +1115,42 @@ async function runGenerate() {
   showSkeleton();
 
   const systemPrompt = mode === 'en-cron'
-    ? `You are a cron expression expert. The user will describe a schedule in plain English. Convert it to cron expressions for multiple platforms.
+    ? `You are a cron expression expert. Convert the user's plain-English schedule description into cron expressions for multiple platforms.
+
+CRITICAL RULES:
+1. Hour-range + interval: when the user says "between Xam and Ypm every N minutes/hours", use (Y-1) as the end hour so the expression does NOT run past Y:00. Example: "every 10 minutes between 9am and 5pm" → hour field is 9-16 (last run 16:50), NOT 9-17 (which would run until 17:50). If the user explicitly wants to include Y:00 as a run, note that in plain_english.
+2. AWS EventBridge: always use 6-field syntax with year (*), and use ? for either day-of-month or day-of-week (never both as *), and use MON-FRI style names for days.
+3. Vercel: minimum interval on free tier is 1 hour; note this in its warning if the schedule is more frequent.
+4. Each warning must name the platform it applies to and be under 15 words.
 
 Respond ONLY with valid JSON in exactly this format:
 {
-  "plain_english": "Runs at 9:00 AM every weekday (Mon-Fri)",
+  "plain_english": "Runs every 10 minutes from 9:00 AM to 4:50 PM on weekdays (last run 16:50, not 17:00)",
   "platforms": {
-    "linux": "0 9 * * 1-5",
-    "github_actions": "0 9 * * 1-5",
-    "aws_eventbridge": "0 9 ? * MON-FRI *",
-    "kubernetes": "0 9 * * 1-5",
-    "vercel": "0 9 * * 1-5"
+    "linux": "*/10 9-16 * * 1-5",
+    "github_actions": "*/10 9-16 * * 1-5",
+    "aws_eventbridge": "0/10 9-16 ? * MON-FRI *",
+    "kubernetes": "*/10 9-16 * * 1-5",
+    "vercel": "0 9-16 * * 1-5"
   },
   "next_runs": [
     "Mon Jun 30 2026 09:00",
-    "Tue Jul 1 2026 09:00",
-    "Wed Jul 2 2026 09:00",
-    "Thu Jul 3 2026 09:00",
-    "Fri Jul 4 2026 09:00"
+    "Mon Jun 30 2026 09:10",
+    "Mon Jun 30 2026 09:20",
+    "Mon Jun 30 2026 09:30",
+    "Mon Jun 30 2026 09:40"
   ],
-  "warnings": []
+  "warnings": {
+    "linux": "",
+    "github_actions": "GitHub Actions runs in UTC; account for your local timezone offset.",
+    "aws_eventbridge": "EventBridge uses UTC; adjust hour field for your target timezone.",
+    "kubernetes": "",
+    "vercel": "Vercel free tier minimum interval is 1 hour; sub-hour schedules require Pro."
+  }
 }
 
-For the warnings array, include any platform-specific gotchas like timezone issues, syntax differences, or throttling limits. Keep each warning under 15 words. If no warnings, return empty array.`
-    : `You are a cron expression expert. The user will paste a cron expression. Explain it in plain English. Respond ONLY with valid JSON: { "plain_english": "...full explanation...", "next_runs": ["...5 upcoming dates formatted like 'Mon Jun 30 2026 09:00'..."], "warnings": [] }`;
+Use an empty string "" for a platform warning when there is nothing notable to flag.`
+    : `You are a cron expression expert. The user will paste a cron expression. Explain it in plain English. Respond ONLY with valid JSON: { "plain_english": "...full explanation including what time(s) it runs and on which days...", "next_runs": ["...5 upcoming dates formatted like 'Mon Jun 30 2026 09:00'..."], "warnings": [] }`;
 
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -1211,7 +1223,7 @@ function renderCards(result) {
       </div>
       <div class="card-desc" style="font-size:15px;color:#1a1a1a;font-weight:500;line-height:1.6;">${h(result.plain_english)}</div>
       ${result.next_runs?.length ? nextRunsHtml(result.next_runs) : ''}
-      ${warningsHtml(result.warnings)}`;
+      ${Array.isArray(result.warnings) && result.warnings.length ? warningHtml(result.warnings.join(' · ')) : ''}`;
     area.appendChild(card);
     hdr.textContent = 'Expression decoded';
     hdr.style.display = 'block';
@@ -1225,6 +1237,10 @@ function renderCards(result) {
     const expr = result.platforms[p.key];
     const card = document.createElement('div');
     card.className = 'result-card';
+    // Support both old flat array and new per-platform warnings object
+    const platformWarning = result.warnings && !Array.isArray(result.warnings)
+      ? result.warnings[p.key] || ''
+      : '';
     card.innerHTML = `
       <div class="card-top">
         <div class="card-platform-name"><span class="platform-icon">${p.icon}</span>${h(p.label)}</div>
@@ -1236,7 +1252,7 @@ function renderCards(result) {
       </div>
       <div class="card-desc">${h(result.plain_english)}</div>
       ${result.next_runs?.length ? nextRunsHtml(result.next_runs) : ''}
-      ${warningsHtml(result.warnings)}`;
+      ${platformWarning ? warningHtml(platformWarning) : ''}`;
     area.appendChild(card);
   });
 
@@ -1249,9 +1265,9 @@ function nextRunsHtml(runs) {
   <div class="next-runs-row">${runs.map(r => `<span class="run-chip">${h(r)}</span>`).join('')}</div>`;
 }
 
-function warningsHtml(warnings) {
-  if (!warnings?.length) return '';
-  return `<div class="warning-box">⚠️ ${warnings.map(w => h(w)).join(' · ')}</div>`;
+function warningHtml(text) {
+  if (!text) return '';
+  return `<div class="warning-box">⚠️ ${h(text)}</div>`;
 }
 
 // ── Skeleton ──────────────────────────────────────────
